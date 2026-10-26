@@ -37,6 +37,7 @@
 - **관리자 판별**: `admins` 표에 있는 계정만 관리자. 쓰기 권한은 RLS의 `is_admin()`이 막고, 화면의 버튼 숨김은 보조 수단이다. Supabase는 RLS에 막힌 update/delete를 오류 없이 0행으로 처리하므로 `.select()`로 바뀐 행을 확인한다.
 - **업로드**: 이미지는 브라우저에서 2400px 웹용 파일과 600px 썸네일(WEBP)로 변환해 올린다. GIF·영상은 원본 그대로. SVG는 허용하지 않는다.
 - **보안 규칙**: 사용자가 입력한 글은 `textContent`로만 화면에 넣고 `innerHTML`을 쓰지 않는다.
+- **CDN 파일**: 정확한 버전을 고정하고 `integrity`(sha384) + `crossorigin="anonymous"`를 붙인다. 버전을 바꾸면 해시도 다시 계산한다: `curl -s <URL> | openssl dgst -sha384 -binary | openssl base64 -A`
 - **실행**: 빌드 없음. 설정 방법은 README.md 참고.
 
 ## 오늘 배운 것
