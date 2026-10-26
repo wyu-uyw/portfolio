@@ -14,7 +14,9 @@
 | `css/exhibition.css` | 전시 페이지 스타일 |
 | `js/exhibition.js` | 전시 페이지 동작 (캔버스, 편집, 업로드, 로그인) |
 | `js/config.js` | Supabase 연결 정보 |
-| `supabase/schema.sql` | 데이터베이스·저장소·권한 설정 SQL |
+| `js/works.js` | 메인 페이지 Work 섹션 (전시 페이지에서 올린 작업물을 연도순으로 표시) |
+| `supabase/schema.sql` | 데이터베이스·저장소·권한 설정 SQL (새 프로젝트용, 전체) |
+| `supabase/002_work_year_description.sql` | 작업물에 제작 연도·설명 추가 (기존 프로젝트용) |
 
 ## Supabase 설정
 

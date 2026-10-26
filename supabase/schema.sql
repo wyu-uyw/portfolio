@@ -35,9 +35,14 @@ create table if not exists public.works (
   thumb_path text,             -- 썸네일 경로 (영상·GIF는 없음)
   width int,
   height int,
+  year int check (year between 1900 and 2100),                -- 제작 연도 (메인 Work 목록에 표시)
+  description text check (char_length(description) <= 300),  -- 짧은 설명 (메인 Work 목록에 표시)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+-- 이전 버전으로 이미 만든 표에도 열을 추가한다
+alter table public.works add column if not exists year int check (year between 1900 and 2100);
+alter table public.works add column if not exists description text check (char_length(description) <= 300);
 
 -- ---------- 사이트 설정 + 캔버스 배치 (행 1개만 사용) ----------
 create table if not exists public.site_settings (

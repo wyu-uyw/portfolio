@@ -46,6 +46,7 @@
     selected: null,
     editingText: null,
     filter: 'all',
+    yearFilter: 'all',
     scale: 1,
     panX: 0,
     panY: 0,
@@ -105,6 +106,12 @@
 
   function formatDate(value) {
     return value ? new Date(value).toLocaleDateString('ko-KR') : '';
+  }
+
+  // 1900~2100 사이 정수만 연도로 인정한다 (schema.sql의 check와 같은 범위)
+  function parseYear(value) {
+    const year = Number(value);
+    return Number.isInteger(year) && year >= 1900 && year <= 2100 ? year : null;
   }
 
   // ---------- 데이터 불러오기 ----------
@@ -601,10 +608,18 @@
     if (state.filter !== 'all' && state.filter !== 'none' && !state.categories.includes(state.filter)) state.filter = 'all';
     filter.value = state.filter;
 
+    const years = [...new Set(state.works.map((w) => w.year).filter(Boolean))].sort((a, b) => b - a);
+    const yearOptions = [new Option('전체', 'all'), ...years.map((y) => new Option(String(y), String(y)))];
+    if (state.works.some((w) => !w.year)) yearOptions.push(new Option('연도 없음', 'none'));
+    const yearFilter = $('#thumbYearFilter');
+    yearFilter.replaceChildren(...yearOptions);
+    if (!yearOptions.some((o) => o.value === state.yearFilter)) state.yearFilter = 'all';
+    yearFilter.value = state.yearFilter;
+
     const list = state.works.filter((w) => {
-      if (state.filter === 'all') return true;
-      if (state.filter === 'none') return !w.category;
-      return w.category === state.filter;
+      if (state.filter === 'none' ? w.category : state.filter !== 'all' && w.category !== state.filter) return false;
+      if (state.yearFilter === 'none') return !w.year;
+      return state.yearFilter === 'all' || String(w.year) === state.yearFilter;
     });
     $('#thumbList').replaceChildren(...list.map(thumbElement));
     $('#thumbEmpty').hidden = list.length > 0;
@@ -651,7 +666,7 @@
     media.src = publicUrl(work.path);
     $('#viewerMedia').replaceChildren(media);
     $('#viewerTitle').textContent = work.title;
-    $('#viewerMeta').textContent = [work.category || '미분류', formatDate(work.created_at)].filter(Boolean).join(' · ');
+    $('#viewerMeta').textContent = [work.year, work.category || '미분류', work.description].filter(Boolean).join(' · ');
     $('#viewerModal').showModal();
   }
 
@@ -777,7 +792,7 @@
     if (error) console.error(error);
   }
 
-  async function uploadWork(file, title, category) {
+  async function uploadWork(file, { title, category, year, description }) {
     const prepared = await prepareWorkFile(file);
     const id = uid();
     const path = `works/${id}.${prepared.main.ext}`;
@@ -793,6 +808,8 @@
       return must(await db.from('works').insert({
         title,
         category: category || null,
+        year,
+        description: description || null,
         media_type: prepared.mediaType,
         path,
         thumb_path: thumbPath,
@@ -812,8 +829,14 @@
     if (!files.length) return;
     const baseTitle = $('#uploadTitle').value.trim();
     const category = $('#uploadCategory').value;
+    const year = parseYear($('#uploadYear').value);
+    const description = $('#uploadDescription').value.trim().slice(0, 300);
     const msg = $('#uploadMsg');
     const btn = $('#uploadBtn');
+    if (!year) {
+      msg.textContent = '제작 연도를 1900~2100 사이 숫자로 입력해 주세요.';
+      return;
+    }
     btn.disabled = true;
 
     let ok = 0;
@@ -825,7 +848,7 @@
         : file.name.replace(/\.[^.]+$/, '').trim();
       title = title.slice(0, 100) || '제목 없음';
       try {
-        state.works.unshift(await uploadWork(file, title, category));
+        state.works.unshift(await uploadWork(file, { title, category, year, description }));
         ok += 1;
       } catch (err) {
         console.error(err);
@@ -835,7 +858,10 @@
 
     btn.disabled = false;
     msg.textContent = [ok ? `${ok}개를 올렸습니다.` : '', ...errors].filter(Boolean).join('\n');
-    if (ok) form.reset();
+    if (ok) {
+      form.reset();
+      $('#uploadYear').value = year; // 같은 해 작업을 이어서 올리기 쉽게 연도는 남겨 둔다
+    }
     renderWorkList();
     renderThumbs();
   }
@@ -845,6 +871,7 @@
     renderCategories();
     renderWorkList();
     $('#uploadMsg').textContent = '';
+    if (!$('#uploadYear').value) $('#uploadYear').value = new Date().getFullYear();
     $('#galleryModal').showModal();
   }
 
@@ -878,7 +905,19 @@
     category.setAttribute('aria-label', '카테고리');
     category.replaceChildren(...categoryOptions(false));
     category.value = work.category || '';
-    fields.append(title, category);
+    const year = document.createElement('input');
+    year.type = 'number';
+    year.min = '1900';
+    year.max = '2100';
+    year.value = work.year || '';
+    year.setAttribute('aria-label', '제작 연도');
+    const description = document.createElement('textarea');
+    description.rows = 2;
+    description.maxLength = 300;
+    description.value = work.description || '';
+    description.placeholder = '설명 (선택)';
+    description.setAttribute('aria-label', '설명');
+    fields.append(title, category, year, description);
 
     const actions = document.createElement('div');
     actions.className = 'btn-row';
@@ -886,7 +925,12 @@
     save.type = 'button';
     save.className = 'btn btn-sm';
     save.textContent = '저장';
-    save.addEventListener('click', () => updateWork(work, title.value.trim(), category.value));
+    save.addEventListener('click', () => updateWork(work, {
+      title: title.value.trim(),
+      category: category.value || null,
+      year: parseYear(year.value),
+      description: description.value.trim() || null,
+    }));
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'btn btn-sm';
@@ -898,14 +942,18 @@
     return row;
   }
 
-  async function updateWork(work, title, category) {
-    if (!title) {
+  async function updateWork(work, changes) {
+    if (!changes.title) {
       toast('제목을 입력해 주세요.');
+      return;
+    }
+    if (!changes.year) {
+      toast('제작 연도를 1900~2100 사이 숫자로 입력해 주세요.');
       return;
     }
     await attempt(async () => {
       const rows = mustChange(must(await db.from('works')
-        .update({ title, category: category || null })
+        .update(changes)
         .eq('id', work.id)
         .select()));
       Object.assign(work, rows[0]);
@@ -1266,6 +1314,7 @@
     $('#tbEdit').addEventListener('click', () => { if (state.selected) toggleTextEditing(state.selected); });
 
     $('#thumbFilter').addEventListener('change', (e) => { state.filter = e.target.value; renderThumbs(); });
+    $('#thumbYearFilter').addEventListener('change', (e) => { state.yearFilter = e.target.value; renderThumbs(); });
 
     $('#uploadForm').addEventListener('submit', requireAdmin(onUploadSubmit));
     $('#categoryForm').addEventListener('submit', requireAdmin(onCategorySubmit));
