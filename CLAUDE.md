@@ -30,7 +30,14 @@
 
 ## 기술 스택
 
-아직 정해지지 않음. 결정되면 이 섹션에 프레임워크, 데이터베이스, 이미지 저장 방식, 배포 환경과 실행/빌드 명령어를 기록한다.
+- **프론트엔드**: 빌드 없는 HTML/CSS/JavaScript. 스크립트는 `<script>`로 순서대로 불러온다 (ES 모듈 아님).
+- **백엔드**: Supabase — 로그인(Auth), 데이터베이스(Postgres + RLS), 파일 저장소(Storage 버킷 `portfolio`). 클라이언트는 CDN의 `@supabase/supabase-js@2.45.4`.
+- **설정**: `supabase/schema.sql`에 표·권한·버킷 설정이 모두 있다. 구조를 바꾸면 이 파일도 함께 고친다.
+- **연결 정보**: `js/config.js`에는 공개용 anon 키만 넣는다. service_role 키는 절대 코드에 넣지 않는다.
+- **관리자 판별**: `admins` 표에 있는 계정만 관리자. 쓰기 권한은 RLS의 `is_admin()`이 막고, 화면의 버튼 숨김은 보조 수단이다. Supabase는 RLS에 막힌 update/delete를 오류 없이 0행으로 처리하므로 `.select()`로 바뀐 행을 확인한다.
+- **업로드**: 이미지는 브라우저에서 2400px 웹용 파일과 600px 썸네일(WEBP)로 변환해 올린다. GIF·영상은 원본 그대로. SVG는 허용하지 않는다.
+- **보안 규칙**: 사용자가 입력한 글은 `textContent`로만 화면에 넣고 `innerHTML`을 쓰지 않는다.
+- **실행**: 빌드 없음. 설정 방법은 README.md 참고.
 
 ## 오늘 배운 것
 CLAUDE.md는 AI가 항상 참고하는 메모장이다.

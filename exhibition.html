@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>전시 | wyw의 포트폴리오</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="css/exhibition.css">
+</head>
+<body data-mode="view">
+
+  <header class="header">
+    <div class="wrap header-inner">
+      <a href="index.html" class="logo">wyw</a>
+      <nav class="menu">
+        <a href="index.html">Home</a>
+        <a href="exhibition.html" aria-current="page">Exhibition</a>
+      </nav>
+      <div class="btn-row header-actions">
+        <button type="button" class="btn" id="loginBtn">관리자 로그인</button>
+        <button type="button" class="btn" id="logoutBtn" hidden>로그아웃</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="ex-intro">
+      <h1 id="siteTitle">wyw 전시관</h1>
+      <p id="siteSubtitle"></p>
+    </div>
+
+    <p class="notice" id="notice" hidden></p>
+
+    <div class="controls">
+      <div class="btn-row" id="tabs" hidden>
+        <button type="button" class="btn" data-tab="view" aria-pressed="true">전시</button>
+        <button type="button" class="btn" data-tab="edit" aria-pressed="false">편집</button>
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="btn btn-sm" id="zoomOutBtn" aria-label="축소">−</button>
+        <span class="zoom-label" id="zoomLabel">100%</span>
+        <button type="button" class="btn btn-sm" id="zoomInBtn" aria-label="확대">+</button>
+        <button type="button" class="btn btn-sm" id="resetViewBtn">초기화</button>
+      </div>
+
+      <div class="edit-only btn-row" id="editToolbar">
+        <button type="button" class="btn btn-sm" id="openGalleryBtn">작업물 관리</button>
+        <button type="button" class="btn btn-sm" id="addTextBtn">텍스트 추가</button>
+        <button type="button" class="btn btn-sm" id="openCustomizeBtn">꾸미기</button>
+        <button type="button" class="btn btn-sm" id="saveLayoutBtn">배치 저장</button>
+        <button type="button" class="btn btn-sm" id="clearCanvasBtn">전체 비우기</button>
+      </div>
+      <p class="dirty-mark" id="dirtyMark" hidden>저장하지 않은 변경 사항이 있습니다.</p>
+
+      <div class="text-toolbar btn-row" id="textToolbar" hidden>
+        <label>글꼴 <select id="tbFont"></select></label>
+        <label>크기 <input type="number" id="tbSize" min="10" max="120"></label>
+        <label>색 <input type="color" id="tbColor"></label>
+        <label>정렬
+          <select id="tbAlign">
+            <option value="left">왼쪽</option>
+            <option value="center">가운데</option>
+            <option value="right">오른쪽</option>
+          </select>
+        </label>
+        <button type="button" class="btn btn-sm" id="tbEdit">글 편집</button>
+      </div>
+    </div>
+
+    <div class="canvas" id="canvas">
+      <div class="stage" id="stage"></div>
+      <p class="empty-hint" id="emptyHint"></p>
+    </div>
+    <p class="hint canvas-help" id="canvasHelp">빈 곳을 끌면 화면이 이동하고, 마우스 휠이나 두 손가락으로 확대·축소할 수 있습니다. 작업물을 누르면 크게 볼 수 있습니다.</p>
+
+    <section class="thumb-strip edit-only" id="thumbStrip">
+      <div class="thumb-head">
+        <h2>작업물</h2>
+        <label>카테고리 <select id="thumbFilter"></select></label>
+      </div>
+      <p class="hint">캔버스로 끌어다 놓거나, 눌러서 가운데에 추가해 주세요.</p>
+      <div class="thumb-list" id="thumbList"></div>
+      <p class="thumb-empty" id="thumbEmpty" hidden>표시할 작업물이 없습니다. '작업물 관리'에서 올려 주세요.</p>
+    </section>
+  </main>
+
+  <!-- 로그인 -->
+  <dialog class="modal" id="loginModal">
+    <form class="modal-inner" id="loginForm">
+      <h2>관리자 로그인</h2>
+      <label>이메일<input type="email" id="loginEmail" autocomplete="username" required></label>
+      <label>비밀번호<input type="password" id="loginPassword" autocomplete="current-password" required></label>
+      <div class="btn-row">
+        <button type="submit" class="btn">로그인</button>
+        <button type="button" class="btn" data-close>취소</button>
+      </div>
+      <p class="form-msg" id="loginMsg"></p>
+    </form>
+  </dialog>
+
+  <!-- 작업물 관리 -->
+  <dialog class="modal modal-lg" id="galleryModal">
+    <div class="modal-inner">
+      <h2>작업물 관리</h2>
+
+      <section class="modal-sec">
+        <h3>새 작업물 올리기</h3>
+        <form class="stack" id="uploadForm">
+          <label>파일 (여러 개 선택할 수 있습니다)
+            <input type="file" id="uploadFiles" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" multiple required>
+          </label>
+          <label>제목 (비워 두면 파일 이름을 사용합니다)<input type="text" id="uploadTitle" maxlength="90"></label>
+          <label>카테고리<select id="uploadCategory"></select></label>
+          <p class="hint">JPG, PNG, WEBP, GIF 이미지는 20MB, MP4, WEBM 영상은 50MB까지 올릴 수 있습니다. 이미지는 웹용 크기와 썸네일로 자동 변환해서 저장합니다.</p>
+          <div class="btn-row"><button type="submit" class="btn" id="uploadBtn">올리기</button></div>
+          <p class="form-msg" id="uploadMsg"></p>
+        </form>
+      </section>
+
+      <section class="modal-sec">
+        <h3>카테고리</h3>
+        <div class="chips" id="categoryChips"></div>
+        <form class="stack" id="categoryForm">
+          <label>새 카테고리<input type="text" id="newCategory" maxlength="30" required></label>
+          <div class="btn-row"><button type="submit" class="btn btn-sm">추가</button></div>
+        </form>
+      </section>
+
+      <section class="modal-sec">
+        <h3>올린 작업물 <span class="hint" id="workCount"></span></h3>
+        <div id="workList"></div>
+      </section>
+
+      <div class="btn-row"><button type="button" class="btn" data-close>닫기</button></div>
+    </div>
+  </dialog>
+
+  <!-- 꾸미기 -->
+  <dialog class="modal modal-lg" id="customizeModal">
+    <div class="modal-inner">
+      <h2>꾸미기</h2>
+
+      <form class="stack" id="customizeForm">
+        <section class="modal-sec">
+          <h3>제목</h3>
+          <label>제목<input type="text" id="cTitle" maxlength="60" required></label>
+          <label>부제목<input type="text" id="cSubtitle" maxlength="120"></label>
+          <label>제목 글꼴<select id="cTitleFont"></select></label>
+          <label>부제목 글꼴<select id="cSubtitleFont"></select></label>
+        </section>
+        <section class="modal-sec">
+          <h3>캔버스 배경</h3>
+          <label>배경색<input type="color" id="cColor"></label>
+          <label>배경 이미지 (JPG, PNG, WEBP)<input type="file" id="cBgFile" accept="image/jpeg,image/png,image/webp"></label>
+          <p class="hint" id="cBgStatus"></p>
+          <div class="btn-row"><button type="button" class="btn btn-sm" id="cBgRemove">배경 이미지 제거</button></div>
+        </section>
+        <div class="btn-row"><button type="submit" class="btn" id="customizeSaveBtn">설정 저장</button></div>
+      </form>
+
+      <section class="modal-sec">
+        <h3>글꼴 추가</h3>
+        <div class="chips" id="fontList"></div>
+        <form class="stack" id="googleFontForm">
+          <label>구글 폰트 이름 (fonts.google.com에 있는 이름 그대로, 예: Noto Serif KR)
+            <input type="text" id="gFontName" maxlength="60" required>
+          </label>
+          <div class="btn-row"><button type="submit" class="btn btn-sm">구글 폰트 추가</button></div>
+        </form>
+        <form class="stack" id="customFontForm">
+          <label>글꼴 이름<input type="text" id="cfName" maxlength="40" required></label>
+          <label>글꼴 파일 (woff2, woff, ttf, otf / 10MB 이하)<input type="file" id="cfFile" accept=".woff2,.woff,.ttf,.otf" required></label>
+          <div class="btn-row"><button type="submit" class="btn btn-sm">글꼴 파일 올리기</button></div>
+        </form>
+      </section>
+
+      <section class="modal-sec">
+        <h3>비밀번호 변경</h3>
+        <form class="stack" id="passwordForm">
+          <label>새 비밀번호 (8자 이상)<input type="password" id="pwNew" autocomplete="new-password" minlength="8" required></label>
+          <label>새 비밀번호 확인<input type="password" id="pwConfirm" autocomplete="new-password" minlength="8" required></label>
+          <div class="btn-row"><button type="submit" class="btn btn-sm">비밀번호 변경</button></div>
+          <p class="form-msg" id="passwordMsg"></p>
+        </form>
+      </section>
+
+      <div class="btn-row"><button type="button" class="btn" data-close>닫기</button></div>
+    </div>
+  </dialog>
+
+  <!-- 작업물 크게 보기 -->
+  <dialog class="modal modal-viewer" id="viewerModal">
+    <div class="modal-inner">
+      <div class="viewer-media" id="viewerMedia"></div>
+      <h2 id="viewerTitle"></h2>
+      <p class="hint viewer-meta" id="viewerMeta"></p>
+      <div class="btn-row"><button type="button" class="btn" data-close>닫기</button></div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/exhibition.js"></script>
+</body>
+</html>
