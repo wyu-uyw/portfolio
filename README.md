@@ -1,4 +1,4 @@
-# my-portfolio
+# portfolio
 
 일러스트 작업물을 소개하는 wyw의 개인 포트폴리오 사이트입니다.
 
